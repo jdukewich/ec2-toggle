@@ -19,6 +19,17 @@ resource "aws_s3_bucket" "bucket" {
 
   website {
     index_document = "index.html"
+
+    routing_rules = <<EOF
+[{
+    "Condition": {
+        "KeyPrefixEquals": "*"
+    },
+    "Redirect": {
+        "ReplaceKeyPrefixWith": "index.html"
+    }
+}]
+EOF
   }
 
   tags = {
