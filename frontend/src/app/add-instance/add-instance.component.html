@@ -1,0 +1,26 @@
+<div class="row mt-3">
+    <div class="col"></div>
+    <div class="col-sm-12 col-md-8 col-lg-6">
+      <h2>Add an instance</h2>
+        <div class="card mb-2">
+          <div class="card-body">
+            <h5 class="card-title">Current Instances</h5>
+            <ul class="list-group">
+              <li class="list-group-item" *ngFor="let instance of instances">{{ instance.id }}</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <form (ngSubmit)="onSubmit()">
+                    <div class="mb-3">
+                      <label for="id" class="form-label">Instance ID</label>
+                      <input type="text" class="form-control" id="id" name="id" [(ngModel)]="id">
+                    </div>
+                    <button class="btn btn-primary" type="submit">Add</button>
+                  </form>
+            </div>
+        </div>
+    </div>
+    <div class="col"></div>
+</div>

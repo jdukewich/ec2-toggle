@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  dynamodb-local:
+    command: "-jar DynamoDBLocal.jar -sharedDb -optimizeDbBeforeStartup -dbPath ./data"
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodb-local
+    expose:
+        - 8000
+    volumes:
+        - "./dynamodb:/home/dynamodblocal/data"
+    working_dir: /home/dynamodblocal
+  web:
+    container_name: fastapi
+    build: .
+    command: bash -c "uvicorn main:app --reload --host 0.0.0.0"
+    env_file:
+      - ./.env
+    volumes:
+      - ./backend:/backend
+    ports:
+      - 8000:8000
+    depends_on:
+      - dynamodb-local
+  frontend:
+    container_name: angular
+    build:
+        context: .
+        dockerfile: Dockerfile
+        target: frontend
+    command: bash -c "ng serve --host 0.0.0.0"
+    ports:
+      - 4200:4200
+    volumes:
+      - ./frontend:/frontend
+      - node_modules:/frontend/node_modules
+    depends_on:
+      - dynamodb-local
+    environment:
+      NODE_PATH: /frontend/node_modules
+
+volumes:
+  node_modules:
