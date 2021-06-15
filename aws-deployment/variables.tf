@@ -41,6 +41,14 @@ variable "acm_certificate_arn" {
   type = string
 }
 
+variable "regional_acm_certificate_arn" {
+  type = string
+}
+
+variable "apig_domain_name" {
+  type = string
+}
+
 variable "aws_account" {
   type = string
 }

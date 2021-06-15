@@ -23,6 +23,7 @@ export class AddUserComponent implements OnInit {
 
   onSubmit(): void {
     this.userInstances.push(this.instance);
+    this.userInstances = [...new Set(this.userInstances)];
     this.apiService.updateUser(this.userId, this.userInstances).subscribe(
       data => {},
       error => console.log(error)
@@ -38,6 +39,7 @@ export class AddUserComponent implements OnInit {
     this.apiService.getUsers().subscribe(
       data => {
         this.users = data;
+        this.onChange({});
       },
       error => console.log(error)
     );
@@ -47,6 +49,16 @@ export class AddUserComponent implements OnInit {
     this.apiService.getInstances().subscribe(
       data => {
         this.instances = data;
+      },
+      error => console.log(error)
+    );
+  }
+
+  removeUserInstance(instance: string): void {
+    let newInstances = this.userInstances.filter(id => id !== instance);
+    this.apiService.updateUser(this.userId, newInstances).subscribe(
+      data => {
+        this.getUsers();
       },
       error => console.log(error)
     );

@@ -1,0 +1,8 @@
+.no-bullet {
+    list-style: none;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+}

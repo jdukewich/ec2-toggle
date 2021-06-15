@@ -36,4 +36,13 @@ export class AddInstanceComponent implements OnInit {
     );
   }
 
+  removeInstance(id: string): void {
+    this.apiService.deleteInstance(id).subscribe(
+      data => {
+        this.getInstances();
+      },
+      error => console.log(error)
+    );
+  }
+
 }

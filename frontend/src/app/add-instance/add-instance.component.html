@@ -6,7 +6,10 @@
           <div class="card-body">
             <h5 class="card-title">Current Instances</h5>
             <ul class="list-group">
-              <li class="list-group-item" *ngFor="let instance of instances">{{ instance.id }}</li>
+              <li class="list-group-item d-flex justify-content-between align-items-center" *ngFor="let instance of instances">
+                {{ instance.id }}
+                <button type="button" class="btn-close" (click)="removeInstance(instance.id)"></button>
+              </li>
             </ul>
           </div>
         </div>

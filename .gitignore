@@ -58,3 +58,6 @@ venv
 *.tfstate.*
 *.tfvars
 *.zip
+
+# Docker dynamodb
+dynamodb/

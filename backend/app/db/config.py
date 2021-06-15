@@ -4,12 +4,12 @@ from app.settings.config import settings
 
 user_db = DynamoDBUserDatabase(
     UserDB,
-    {"endpoint_url": settings.DDB_URL},
+    settings.DDB_CONFIG,
     settings.DDB_USERS_TABLE,
-    settings.DDB_USERS_EMAIL_INDEX,
+    "email"
 )
 
 instance_db = DynamoDBExtraDatabase(
-    {"endpoint_url": settings.DDB_URL},
+    settings.DDB_CONFIG,
     settings.DDB_INSTANCES_TABLE,
 )

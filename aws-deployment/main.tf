@@ -1,4 +1,3 @@
-# Need to add static site hosting for S3, and permissions for lambda role
 terraform {
   required_providers {
     aws = {
@@ -78,6 +77,16 @@ resource "aws_s3_bucket_object" "html" {
   etag         = filemd5(each.value)
 }
 
+resource "aws_s3_bucket_object" "css" {
+  # Add all of the angular css build files
+  for_each     = fileset(path.module, "../frontend/dist/frontend/*.css")
+  key          = replace(each.value, "../frontend/dist/frontend/", "")
+  source       = each.value
+  bucket       = aws_s3_bucket.bucket.id
+  content_type = "text/css"
+  etag         = filemd5(each.value)
+}
+
 resource "aws_cloudfront_distribution" "cloudfront" {
   origin {
     domain_name = aws_s3_bucket.bucket.bucket_regional_domain_name
@@ -89,7 +98,8 @@ resource "aws_cloudfront_distribution" "cloudfront" {
   }
 
   origin {
-    domain_name = replace(aws_apigatewayv2_api.apig.api_endpoint, "https://", "")
+    # domain_name = replace(aws_apigatewayv2_api.apig.api_endpoint, "https://", "")
+    domain_name = aws_apigatewayv2_domain_name.apig_domain_name.domain_name_configuration[0].target_domain_name
     origin_id   = "APIG"
 
     custom_origin_config {
@@ -97,6 +107,7 @@ resource "aws_cloudfront_distribution" "cloudfront" {
       https_port             = "443"
       origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.1", "TLSv1.2"]
+      origin_read_timeout    = 60
     }
   }
 
@@ -147,6 +158,7 @@ resource "aws_cloudfront_distribution" "cloudfront" {
 
     forwarded_values {
       query_string = false
+      headers = ["Authorization", "Host"]
       cookies {
         forward = "whitelist"
 
@@ -184,6 +196,27 @@ resource "aws_apigatewayv2_api" "apig" {
     Environment = var.environment
     Application = var.application
   }
+}
+
+resource "aws_apigatewayv2_domain_name" "apig_domain_name" {
+  domain_name = var.apig_domain_name
+
+  domain_name_configuration {
+    certificate_arn = var.regional_acm_certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+
+  tags = {
+    Environment = var.environment
+    Application = var.application
+  }
+}
+
+resource "aws_apigatewayv2_api_mapping" "api_mapping" {
+  api_id      = aws_apigatewayv2_api.apig.id
+  domain_name = aws_apigatewayv2_domain_name.apig_domain_name.id
+  stage       = "$default"
 }
 
 resource "aws_lambda_permission" "lambda_permission" {
@@ -250,7 +283,7 @@ resource "aws_iam_role_policy_attachment" "lambda_logs" {
   policy_arn = aws_iam_policy.lambda_logging.arn
 }
 
-resource "aws_iam_policy" "lambda_ddb_perm" {
+resource "aws_iam_policy" "lambda_perm" {
   name        = "${var.application}-${var.environment}-lambda-ddb-policy"
   path        = "/"
   description = "IAM policy for DDB access from a lambda"
@@ -272,8 +305,24 @@ resource "aws_iam_policy" "lambda_ddb_perm" {
       ],
       "Resource": [
         "arn:aws:dynamodb:${var.region}:${var.aws_account}:table/${var.ddb_users_table}",
-        "arn:aws:dynamodb:${var.region}:${var.aws_account}:table/${var.ddb_instances_table}"
+        "arn:aws:dynamodb:${var.region}:${var.aws_account}:table/${var.ddb_instances_table}",
+        "arn:aws:dynamodb:${var.region}:${var.aws_account}:table/${var.ddb_users_table}/index/*"
       ],
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "ec2:DescribeInstances"
+      ],
+      "Resource": "*",
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "ec2:StartInstances",
+        "ec2:StopInstances"
+      ],
+      "Resource": "arn:aws:ec2:${var.region}:${var.aws_account}:instance/*",
       "Effect": "Allow"
     }
   ]
@@ -288,7 +337,7 @@ EOF
 
 resource "aws_iam_role_policy_attachment" "lambda_ddb" {
   role       = aws_iam_role.iam_for_lambda.name
-  policy_arn = aws_iam_policy.lambda_ddb_perm.arn
+  policy_arn = aws_iam_policy.lambda_perm.arn
 }
 
 resource "aws_cloudwatch_log_group" "log_group" {
@@ -301,6 +350,8 @@ resource "aws_lambda_function" "lambda" {
   function_name = "${var.application}-${var.environment}"
   role          = aws_iam_role.iam_for_lambda.arn
   handler       = "main.handler"
+  # Long timeouts because of waiting for EC2
+  timeout       = 60
 
   source_code_hash = filebase64sha256("payload.zip")
 
@@ -340,7 +391,7 @@ resource "aws_dynamodb_table" "users_ddb_table" {
   }
 
   global_secondary_index {
-    name            = "EmailIndex"
+    name            = "email"
     hash_key        = "email"
     write_capacity  = 1
     read_capacity   = 1
@@ -369,4 +420,39 @@ resource "aws_dynamodb_table" "instances_ddb_table" {
     Application = var.application
     Environment = var.environment
   }
+}
+
+resource "aws_lambda_permission" "lambda_permission_cloudwatch" {
+  statement_id  = "AllowCloudWatchLambdaInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lambda.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.keep_warm_rule.arn
+}
+
+resource "aws_cloudwatch_event_rule" "keep_warm_rule" {
+  name                = "${var.application}-${var.environment}-keep-warm"
+  schedule_expression = "rate(5 minutes)"
+
+  tags = {
+    Application = var.application
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_event_target" "keep_warm_target" {
+  rule      = aws_cloudwatch_event_rule.keep_warm_rule.name
+  arn       = aws_lambda_function.lambda.arn
+
+  input = <<EOF
+{
+  "path": "/",
+  "httpMethod": "GET",
+  "requestContext": {
+    "path": "/",
+    "httpMethod": "GET",
+    "protocol": "HTTP/1.1"
+  }
+}
+EOF
 }

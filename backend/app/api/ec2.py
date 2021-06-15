@@ -30,8 +30,20 @@ async def get_instances(user: User = Depends(fastapi_users.get_current_superuser
 async def add_instances(
     instance: Instance, user: User = Depends(fastapi_users.get_current_superuser)
 ):
-    """Add EC2 instance(s)"""
+    """Add an EC2 instance"""
     return await instance_db.create(instance)
+
+
+@router.delete("/instances/{instance_id}")
+async def add_instances(instance_id: str, user: User = Depends(fastapi_users.get_current_superuser)):
+    """Delete an EC2 instance"""
+    # Remove this instance from any users
+    users = await user_db.get_all()
+    for user in users:
+        if instance_id in user["instances"]:
+            user["instances"].remove(instance_id)
+            updated_user = await user_db.update(user)
+    return await instance_db.delete(Instance(id=instance_id))
 
 
 @router.get("/my-instances")
@@ -57,29 +69,29 @@ async def toggle(
     if state == "running":
         # Turn the instance off, and wait until it's stopped
         server.stop()
-        server.wait_until_stopped(
-            Filters=[
-                {
-                    "Name": "instance-id",
-                    "Values": [
-                        instance.id,
-                    ],
-                },
-            ]
-        )
+        # server.wait_until_stopped(
+        #     Filters=[
+        #         {
+        #             "Name": "instance-id",
+        #             "Values": [
+        #                 instance.id,
+        #             ],
+        #         },
+        #     ]
+        # )
     elif state == "stopped":
         # Turn the instance on, and wait until it's running
         server.start()
-        server.wait_until_running(
-            Filters=[
-                {
-                    "Name": "instance-id",
-                    "Values": [
-                        instance.id,
-                    ],
-                },
-            ]
-        )
+        # server.wait_until_running(
+        #     Filters=[
+        #         {
+        #             "Name": "instance-id",
+        #             "Values": [
+        #                 instance.id,
+        #             ],
+        #         },
+        #     ]
+        # )
 
     # I hope none of these states are ever reached, but we should handle them
     elif state == "pending":
@@ -94,3 +106,13 @@ async def toggle(
         # Uh oh, something must've gone wrong, please check it out
         pass
     return
+
+
+@router.get("/instance-state/{instance_id}")
+async def instance_state(
+    instance_id: str, user: User = Depends(fastapi_users.get_current_user)
+):
+    """Gets the state on an EC2 instance"""
+    ec2 = boto3.resource("ec2")
+    server = ec2.Instance(instance_id)
+    return server.state["Name"]

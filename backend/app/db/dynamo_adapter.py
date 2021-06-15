@@ -170,11 +170,10 @@ class DynamoDBUserDatabase(BaseUserDatabase[UD]):
         return self.user_db_model(**user_dict)
 
     def create_table(self) -> None:
-        dynamodb = boto3.client("dynamodb", endpoint_url=settings.DDB_URL)
+        dynamodb = boto3.client("dynamodb", **self.resource_args)
         try:
             dynamodb.describe_table(TableName=self.users_table)
         except Exception as e:
-            print(e)
             dynamodb.create_table(
                 AttributeDefinitions=[
                     {"AttributeName": "id", "AttributeType": "S"},
@@ -187,8 +186,8 @@ class DynamoDBUserDatabase(BaseUserDatabase[UD]):
                 ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
                 GlobalSecondaryIndexes=[
                     {
-                        "IndexName": settings.DDB_USERS_EMAIL_INDEX + 'Index',
-                        "KeySchema": [{"AttributeName": settings.DDB_USERS_EMAIL_INDEX, "KeyType": "HASH"}],
+                        "IndexName": self.users_email_index,
+                        "KeySchema": [{"AttributeName": "email", "KeyType": "HASH"}],
                         "Projection": {"ProjectionType": "ALL"},
                         "ProvisionedThroughput": {
                             "ReadCapacityUnits": 1,
@@ -260,11 +259,10 @@ class DynamoDBExtraDatabase:
             await table.delete_item(Key={"id": item_dict["id"]})
 
     def create_table(self) -> None:
-        dynamodb = boto3.client("dynamodb", endpoint_url=settings.DDB_URL)
+        dynamodb = boto3.client("dynamodb", **self.resource_args)
         try:
             dynamodb.describe_table(TableName=self.table_name)
         except Exception as e:
-            print(e)
             dynamodb.create_table(
                 AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
                 TableName=self.table_name,

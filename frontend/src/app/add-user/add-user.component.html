@@ -13,7 +13,15 @@
                       </select>
                     </div>
                     <div class="mb-3">
-                      Currently has access to: {{ this.userInstances.join(', ') }}
+                      Currently has access to:
+                      <ul class="no-bullet">
+                        <li *ngFor="let instance of userInstances">
+                          <span class="badge rounded-pill bg-dark">
+                            {{ instance }}
+                            <button class="btn-close btn-close-white" type="button" (click)="removeUserInstance(instance)"></button>
+                          </span>
+                        </li>
+                      </ul>
                     </div>
                     <div class="mb-3">
                       <label for="instance" class="form-label">Instance</label>

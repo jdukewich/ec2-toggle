@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     DDB_URL: str = os.environ.get("DDB_URL")
     DDB_USERS_TABLE: str = os.environ.get("DDB_USERS_TABLE", "users")
     DDB_INSTANCES_TABLE: str = os.environ.get("DDB_INSTANCES_TABLE", "instances")
-    DDB_USERS_EMAIL_INDEX: str = os.environ.get("DDB_USERS_EMAIL_INDEX", "email")
     DDB_CONFIG: Mapping[str, str] = {"endpoint_url": DDB_URL} if DDB_URL else {}
 
 

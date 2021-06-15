@@ -2,16 +2,16 @@
     <div class="col"></div>
     <div class="col">
         <ul class="mt-3 no-bullet">
-            <li *ngFor="let instance of myInstances">
-                <div class="card">
+            <li *ngFor="let instance of myInstances; let i = index">
+                <div class="card mb-3">
                     <div class="card-body">
                         <h5 class="card-title">Instance: {{ instance[0] }}</h5>
                         <p class="card-text">The server is currently: {{ instance[1] }}</p>
                         <div class="row">
                             <div class="col"></div>
                             <div class="col text-center">
-                                <button id="toggle" class="btn btn-primary" (click)="toggleInstance(instance[0])">Toggle</button>
-                                <div id="loading" class="lds-ring" style="display: none;"><div></div><div></div><div></div><div></div></div>
+                                <button id="toggle{{ i }}" class="btn btn-primary" (click)="toggleInstance(instance[0], instance[1], i)">Toggle</button>
+                                <div id="loading{{ i }}" class="lds-ring" style="display: none;"><div></div><div></div><div></div><div></div></div>
                             </div>
                             <div class="col"></div>
                         </div>

@@ -1,4 +1,6 @@
 import { Component, OnInit } from '@angular/core';
+import { interval } from 'rxjs';
+import { startWith, switchMap } from "rxjs/operators";
 import { ApiService } from '../api.service';
 
 @Component({
@@ -9,11 +11,16 @@ import { ApiService } from '../api.service';
 export class HomeComponent implements OnInit {
 
   myInstances: any[] = [];
+  intervalId: any = null;
 
   constructor(private apiService: ApiService) { }
 
   ngOnInit(): void {
     this.getMyInstances();
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.intervalId);
   }
 
   getMyInstances(): void {
@@ -25,9 +32,38 @@ export class HomeComponent implements OnInit {
     );
   }
 
-  toggleInstance(id: string): void {
-    let loading = document.getElementById('loading');
-    let toggle = document.getElementById('toggle');
+  pollInstanceState(id: string, index: number, target: string): void {
+    let loading = document.getElementById('loading' + index);
+    let toggle = document.getElementById('toggle' + index);
+
+    this.intervalId = setInterval((async () => {
+      this.apiService.getInstanceState(id).subscribe(
+        data => {
+          if (data === target) {
+            // Get new states
+            this.getMyInstances();
+            // Remove spinner and add back toggle button here
+            if (toggle && loading) {
+              toggle.style.display = "inline-block";
+              loading.style.display = "none";
+            }
+            // Destroy timer
+            this.clearPoll();
+          }
+          return data;
+        },
+        error => console.log(error)
+      );
+    }).bind(this), 5000);
+  }
+
+  clearPoll(): void {
+    clearInterval(this.intervalId);
+  }
+
+  toggleInstance(id: string, oldState: string, index: number): void {
+    let loading = document.getElementById('loading' + index);
+    let toggle = document.getElementById('toggle' + index);
     // Remove button and add loading spinner
     if (toggle && loading) {
       toggle.style.display = "none";
@@ -36,13 +72,14 @@ export class HomeComponent implements OnInit {
 
     this.apiService.toggleInstance(id).subscribe(
       data => {
-        // Get new states
-        this.getMyInstances();
-        // Remove spinner and add back toggle button here
-        if (toggle && loading) {
-          toggle.style.display = "inline-block";
-          loading.style.display = "none";
+        // Loop until the state changes
+        let target = 'running';
+        if (oldState === 'running') {
+          target = 'stopped';
         }
+
+        // Start the timer
+        this.pollInstanceState(id, index, target);
       },
       error => console.log(error)
     );

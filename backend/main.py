@@ -50,4 +50,4 @@ app.add_middleware(
 
 app.include_router(api_router, prefix="/api")
 
-handler = Mangum(app)
+handler = Mangum(app, log_level='debug')
