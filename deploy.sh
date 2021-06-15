@@ -10,6 +10,8 @@ rm -rf tmp
 
 # Build Angular for production
 cd ../frontend
+# Set Angular environment file from environment variables
+sed -i '' "s|apiUrl.*|apiUrl: '$API_URL'|" frontend/src/environments/environment.prod.ts
 ng build
 
 # Terraform update

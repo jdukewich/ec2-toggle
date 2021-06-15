@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://toggle.dukewich.com/api'
+  apiUrl: 'https://example.com/api'
 };
